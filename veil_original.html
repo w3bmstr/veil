@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VEIL — Steer the Contagion</title>
+<meta name="description" content="VEIL: steer an unstable contagion. Become permanent before the world erases you."/>
+<style>
+:root {
+  --bg:#07090c; --panel:#0e1218; --panel2:#141a22; --border:#1e2633;
+  --text:#e8ecf1; --muted:#8b95a8; --accent:#7cfcb0;
+  --accent-dim:rgba(124,252,176,.12); --warn:#ffb454; --danger:#ff6b6b;
+  --infect:#c4f542; --detect:#5b9fd4; --cure:#e8a0bf;
+  --radius:12px; --font:"Segoe UI", system-ui, -apple-system, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font); background:var(--bg); color:var(--text);
+  min-height:100vh; font-size:16px; line-height:1.5;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,252,176,.06), transparent),
+    radial-gradient(ellipse 40% 30% at 100% 100%, rgba(91,159,212,.04), transparent);
+  -webkit-tap-highlight-color:transparent;
+}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;font-weight:600;transition:transform .12s,background .12s,border-color .12s}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.shell{max-width:1100px;margin:0 auto;padding:.85rem .85rem 3rem}
+.header{display:flex;justify-content:space-between;align-items:center;padding:.65rem 0;border-bottom:1px solid var(--border);margin-bottom:1.1rem;gap:.5rem;flex-wrap:wrap}
+.logo{font-weight:800;font-size:1.4rem;letter-spacing:.12em;color:var(--accent)}
+.logo span{color:var(--muted);font-weight:500;letter-spacing:0;font-size:.88rem;margin-left:.4rem}
+.nav{display:flex;gap:.25rem;align-items:center}
+.nav button{background:transparent;color:var(--muted);padding:.4rem .65rem;font-size:.88rem}
+.nav button:hover{color:var(--text)}
+.nav button.on{color:var(--accent)}
+.screen{display:none}
+.screen.active{display:block;animation:fadeIn .28s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%{filter:brightness(1.4)}100%{filter:brightness(1)}}
+@keyframes flashRed{0%{box-shadow:inset 0 0 40px rgba(255,80,80,.25)}100%{box-shadow:none}}
+@keyframes flashGreen{0%{box-shadow:inset 0 0 40px rgba(124,252,176,.2)}100%{box-shadow:none}}
+body.flash-bad{animation:flashRed .5s ease}
+body.flash-good{animation:flashGreen .5s ease}
+
+.hero{text-align:center;padding:2.2rem .75rem 1.8rem}
+.hero h1{font-size:clamp(2.5rem,8vw,3.9rem);font-weight:800;letter-spacing:.18em;color:var(--accent);margin-bottom:.45rem}
+.hero .tag{color:var(--muted);font-size:1.1rem;max-width:420px;margin:0 auto 1.3rem}
+.hero .tag em{color:var(--text);font-style:normal}
+.btn-main{background:linear-gradient(180deg,#9affc8,#5ee0a0);color:#04140c;padding:.85rem 1.7rem;font-size:1.06rem;border-radius:10px;box-shadow:0 4px 22px rgba(124,252,176,.25);min-height:48px}
+.btn-main:hover{filter:brightness(1.05)}
+.btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:.6rem 1.1rem;font-size:.95rem;min-height:44px}
+.btn-ghost:hover{border-color:var(--muted)}
+.modes{display:flex;flex-wrap:wrap;gap:.55rem;justify-content:center;margin-top:.9rem}
+.score-pill{display:inline-flex;gap:.35rem;background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:.3rem .75rem;font-size:.88rem;color:var(--muted);margin-bottom:.7rem}
+.score-pill strong{color:var(--accent)}
+.unlocks{font-size:.82rem;color:var(--muted);margin-top:.8rem}
+.unlocks strong{color:var(--warn)}
+
+.section-title{text-align:center;margin-bottom:.3rem;font-size:1.3rem}
+.section-sub{text-align:center;color:var(--muted);font-size:.95rem;margin-bottom:.9rem}
+.natures,.scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;margin:1rem 0}
+.nature-card,.scenario-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s;min-height:120px}
+.nature-card:hover,.nature-card.selected,.scenario-card:hover,.scenario-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-dim)}
+.nature-card.locked{opacity:.45;cursor:not-allowed}
+.nature-card h3,.scenario-card h3{font-size:1.08rem;margin-bottom:.25rem;color:var(--accent)}
+.nature-card p,.scenario-card p{font-size:.86rem;color:var(--muted)}
+.nature-card .stat,.scenario-card .stat{font-size:.8rem;color:var(--warn);margin-top:.4rem}
+
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;margin-bottom:.65rem}
+@media(max-width:700px){.hud{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:400px){.hud{grid-template-columns:1fr 1fr}}
+.stat-box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:.5rem .55rem;text-align:center}
+.stat-box .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.stat-box .val{font-size:1.22rem;font-weight:800;margin-top:.08rem}
+.stat-box.infect .val{color:var(--infect)}
+.stat-box.detect .val{color:var(--detect)}
+.stat-box.cure .val{color:var(--cure)}
+.stat-box.influence .val{color:var(--accent)}
+.stat-box.stable .val{color:var(--warn)}
+
+.race{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-bottom:.75rem}
+@media(max-width:520px){.race{grid-template-columns:1fr}}
+.race-item{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:.45rem .65rem}
+.race-item .rl{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.25rem;display:flex;justify-content:space-between}
+.race-item .rl b{color:var(--text);font-weight:700}
+.race-track{height:9px;border-radius:5px;background:#1a2030;overflow:hidden}
+.race-track i{display:block;height:100%;border-radius:5px;transition:width .4s ease}
+.race-track.you i{background:linear-gradient(90deg,#8fd94f,var(--infect))}
+.race-track.them i{background:linear-gradient(90deg,#c77b9a,var(--cure))}
+
+.phase-blurb{font-size:.86rem;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:.48rem .7rem;margin-bottom:.6rem}
+.turn-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.3rem;margin-bottom:.55rem;font-size:.9rem;color:var(--muted)}
+.turn-bar strong{color:var(--text)}
+
+.map-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem;margin-bottom:.85rem}
+.map-title{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem}
+.map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:.35rem}
+.region{
+  border:1px solid var(--border);border-radius:8px;padding:.45rem .4rem;font-size:.78rem;cursor:pointer;
+  min-height:68px;display:flex;flex-direction:column;justify-content:space-between;
+  transition:border-color .15s,transform .1s,box-shadow .2s;background:#121820;
+}
+.region:hover{border-color:var(--muted);transform:translateY(-1px)}
+.region.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-dim)}
+.region.origin{box-shadow:inset 0 0 0 1px rgba(124,252,176,.45)}
+.region .rname{font-weight:700;font-size:.82rem;line-height:1.15}
+.region .rpct{font-size:.74rem;font-weight:700;color:var(--infect)}
+.region .rdet{font-size:.68rem;color:var(--detect)}
+.region.lvl0{background:#121820}
+.region.lvl1{background:rgba(196,245,66,.08);border-color:rgba(196,245,66,.22)}
+.region.lvl2{background:rgba(196,245,66,.15);border-color:rgba(196,245,66,.38)}
+.region.lvl3{background:rgba(196,245,66,.26);border-color:rgba(196,245,66,.52)}
+.region.lvl4{background:rgba(196,245,66,.38);border-color:rgba(196,245,66,.68)}
+.region.sealed-hard{outline:1px solid rgba(255,180,84,.55)}
+.region.pulse{animation:pulse .4s ease}
+.legend{font-size:.76rem;color:var(--muted);margin-top:.5rem}
+.legend span{margin-right:.65rem}
+
+.row{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+@media(max-width:720px){.row{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem}
+.panel h3{font-size:.94rem;margin-bottom:.5rem;color:var(--accent)}
+.delta{font-size:.84rem;color:var(--muted);background:var(--panel2);border-radius:8px;padding:.45rem .55rem;margin-bottom:.55rem;min-height:2.5em;line-height:1.4}
+.delta .up{color:var(--infect);font-weight:700}
+.delta .down{color:var(--danger);font-weight:700}
+.log{max-height:180px;overflow-y:auto;font-size:.86rem;color:var(--muted);-webkit-overflow-scrolling:touch}
+.log div{padding:.22rem 0;border-bottom:1px solid rgba(30,38,51,.55)}
+.log .good{color:var(--infect)}
+.log .bad{color:var(--danger)}
+.log .warn{color:var(--warn)}
+.log .sys{color:var(--detect)}
+.actions{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.65rem}
+.actions button{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:.55rem .85rem;font-size:.88rem;min-height:44px}
+.actions button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.actions button.primary{background:var(--accent-dim);border-color:rgba(124,252,176,.45);color:var(--accent);flex:1}
+.mut-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem}
+@media(max-width:400px){.mut-grid{grid-template-columns:1fr}}
+.mut-btn{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:.55rem .6rem;text-align:left;color:var(--text);font-size:.84rem;min-height:52px}
+.mut-btn:hover:not(:disabled){border-color:var(--accent)}
+.mut-btn strong{display:block;color:var(--accent);font-size:.88rem;margin-bottom:.1rem}
+.mut-btn span{color:var(--muted);font-size:.76rem}
+.mut-btn .cost{color:var(--warn)}
+.traits{display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;margin-bottom:.5rem;font-size:.78rem}
+.trait{background:var(--panel2);border-radius:6px;padding:.32rem .4rem;text-align:center;color:var(--muted)}
+.trait b{display:block;color:var(--text);font-size:.9rem}
+.tip{font-size:.84rem;color:var(--warn);background:rgba(255,180,84,.08);border:1px solid rgba(255,180,84,.28);border-radius:8px;padding:.45rem .6rem;margin-bottom:.55rem}
+.pressure{font-size:.8rem;color:var(--muted);margin-top:.35rem}
+.pressure b{color:var(--text)}
+
+.end-box{max-width:440px;margin:1.8rem auto;text-align:center;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.8rem 1.3rem}
+.end-box h2{font-size:1.65rem;margin-bottom:.45rem}
+.end-box.win h2{color:var(--accent)}
+.end-box.lose h2{color:var(--danger)}
+.end-box p{color:var(--muted);margin-bottom:.7rem;font-size:1rem}
+.best-box{font-size:.9rem;color:var(--muted)}
+.best-box strong{color:var(--accent)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1.4rem;max-width:420px;width:100%;max-height:88vh;overflow-y:auto}
+.modal h2{margin-bottom:.65rem;font-size:1.25rem}
+.modal p{color:var(--muted);font-size:.95rem;margin-bottom:.5rem}
+.hidden{display:none!important}
+.toast{position:fixed;bottom:1.1rem;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:.5rem 1rem;border-radius:10px;font-size:.9rem;z-index:100;pointer-events:none;animation:fadeIn .2s;max-width:90%}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <div class="logo">VEIL <span>contagion protocol</span></div>
+    <nav class="nav">
+      <button type="button" id="btn-sound" title="Toggle sound">Sound: Off</button>
+      <button type="button" id="btn-how">How to Play</button>
+      <button type="button" id="btn-about">About</button>
+    </nav>
+  </header>
+
+  <section class="screen active" id="screen-title">
+    <div class="hero">
+      <h1>VEIL</h1>
+      <p class="tag">You do not control the contagion.<br><em>You steer it.</em><br>Become permanent before the world erases you.</p>
+      <div class="score-pill" id="title-best">Best score: <strong>—</strong></div>
+      <div><button class="btn-main" id="btn-start">Begin Emergence</button></div>
+      <div class="modes"><button class="btn-ghost" id="btn-how2">How it works</button></div>
+      <p class="unlocks" id="unlock-note"></p>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-scenario">
+    <h2 class="section-title">Choose Scenario</h2>
+    <p class="section-sub">Different pressures. Same organism.</p>
+    <div class="scenarios" id="scenario-list"></div>
+    <div style="text-align:center;margin-top:1rem">
+      <button class="btn-main" id="btn-to-nature" disabled>Continue</button>
+      <div style="margin-top:.7rem"><button class="btn-ghost" id="btn-back-title">Back</button></div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-nature">
+    <h2 class="section-title">Choose a Nature</h2>
+    <p class="section-sub">Starting identity. Some unlock after your first permanence.</p>
+    <div class="natures" id="nature-list"></div>
+    <div style="text-align:center;margin-top:1rem">
+      <button class="btn-main" id="btn-confirm-nature" disabled>Confirm Nature</button>
+      <div style="margin-top:.7rem"><button class="btn-ghost" id="btn-back-scenario">Back</button></div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-game">
+    <div class="phase-blurb" id="phase-blurb">Emergence — the world still thinks this is ordinary noise.</div>
+    <div class="turn-bar">
+      <span>Cycle <strong id="turn-num">1</strong> · <span id="nature-label">—</span> · <span id="scenario-label">—</span></span>
+      <span id="phase-label">Emergence</span>
+    </div>
+    <div class="hud">
+      <div class="stat-box infect"><div class="label">Presence</div><div class="val" id="s-infect">0%</div></div>
+      <div class="stat-box detect"><div class="label">Detection</div><div class="val" id="s-detect">0%</div></div>
+      <div class="stat-box cure"><div class="label">Counter</div><div class="val" id="s-cure">0%</div></div>
+      <div class="stat-box influence"><div class="label">Influence</div><div class="val" id="s-inf">0</div></div>
+      <div class="stat-box stable"><div class="label">Stability</div><div class="val" id="s-stable">70%</div></div>
+    </div>
+    <div class="race">
+      <div class="race-item">
+        <div class="rl"><span>Your permanence</span><b id="race-you-pct">0%</b></div>
+        <div class="race-track you"><i id="race-you" style="width:0%"></i></div>
+      </div>
+      <div class="race-item">
+        <div class="rl"><span>Their countermeasure</span><b id="race-them-pct">0%</b></div>
+        <div class="race-track them"><i id="race-them" style="width:0%"></i></div>
+      </div>
+    </div>
+
+    <div class="map-wrap">
+      <div class="map-title">World — brighter = higher presence</div>
+      <div class="map-grid" id="map"></div>
+      <div class="legend"><span>Tap region for detail</span><span>· Amber = sealed</span><span>· Glow = origin</span></div>
+    </div>
+
+    <div class="row">
+      <div class="panel">
+        <div class="tip" id="tip">1/3 — Spend Influence on a bias (or Stabilize).</div>
+        <h3>Form Traits</h3>
+        <div class="traits" id="traits"></div>
+        <h3>Steer Mutation</h3>
+        <div class="mut-grid" id="mut-actions"></div>
+        <p class="pressure" id="pressure"></p>
+        <div class="actions">
+          <button type="button" class="primary" id="btn-advance">Advance Cycle</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>This Cycle</h3>
+        <div class="delta" id="delta">Advance to see what changes.</div>
+        <h3>Signal Log</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:.85rem">
+      <h3>Region</h3>
+      <p style="color:var(--muted);font-size:.93rem" id="region-text">Select a region.</p>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-end">
+    <div class="end-box" id="end-box">
+      <h2 id="end-title">—</h2>
+      <p id="end-desc"></p>
+      <p style="font-size:.9rem;color:var(--muted)" id="end-stats"></p>
+      <p class="best-box" id="end-score"></p>
+      <button class="btn-main" id="btn-again" style="margin-top:.9rem">New Emergence</button>
+    </div>
+  </section>
+</div>
+
+<div class="modal-bg hidden" id="modal-how">
+  <div class="modal">
+    <h2>How to Play</h2>
+    <p><strong style="color:var(--text)">You are the Veil.</strong> Bias mutations with Influence, then advance cycles. You never fully control the form.</p>
+    <p><strong style="color:var(--text)">Win</strong> by raising permanence (top-left bar) until the world cannot erase you cheaply — or by overwhelming it.</p>
+    <p><strong style="color:var(--text)">Lose</strong> if the countermeasure bar fills while you are still weak, or presence collapses.</p>
+    <p>Transmission spreads. Resilience fights seals. Concealment slows detection. Surge is power with a price.</p>
+    <button class="btn-main" style="width:100%;margin-top:1rem" id="close-how">Understood</button>
+  </div>
+</div>
+<div class="modal-bg hidden" id="modal-about">
+  <div class="modal">
+    <h2>About VEIL</h2>
+    <p>Fictional contagion strategy. Invented pathogens and events only.</p>
+    <p>Not affiliated with any real disease, laboratory, or institution.</p>
+    <button class="btn-main" style="width:100%;margin-top:1rem" id="close-about">Close</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const PHASE_TEXT={
+  Emergence:"Emergence — the world still thinks this is ordinary noise.",
+  Recognition:"Recognition — patterns appear. Labs start asking questions.",
+  Negotiation:"Negotiation — borders harden. Science races. You are named.",
+  Inheritance:"Inheritance — permanence or erasure. No middle left."
+};
+
+const SCENARIOS=[
+  {id:"bloom",name:"Bloom",blurb:"Balanced world. Standard science and coordination.",stat:"Classic",detectMult:1,cureMult:1,spreadMult:1,startInf:1},
+  {id:"ghost",name:"Ghost",blurb:"Stay quiet. Detection is the real enemy.",stat:"Stealth",detectMult:1.35,cureMult:0.82,spreadMult:0.88,startInf:0.85},
+  {id:"iron",name:"Iron",blurb:"Hyper-competent institutions. Research is ruthless.",stat:"Hard",detectMult:1.22,cureMult:1.55,spreadMult:0.94,startInf:1},
+  {id:"fire",name:"Fire",blurb:"Open dense world. Spread and panic both run hot.",stat:"Fast",detectMult:1.22,cureMult:1.18,spreadMult:1.32,startInf:1.2}
+];
+
+const NATURES=[
+  {id:"spore",name:"Spore",blurb:"Environmental. Slow, stubborn, hard to burn out.",stat:"Resilient · Slow",spread:0.72,resilience:1.38,conceal:1.15,mutRate:0.8,unlock:true},
+  {id:"vector",name:"Vector",blurb:"Animals and border gaps. Long unpredictable jumps.",stat:"Jumps",spread:1.14,resilience:0.92,conceal:0.95,mutRate:1.15,unlock:true},
+  {id:"viral",name:"Viral",blurb:"Fast replication. High drift. Surges are loud.",stat:"Fast · Fragile",spread:1.4,resilience:0.7,conceal:0.8,mutRate:1.48,unlock:false},
+  {id:"dormant",name:"Dormant",blurb:"Sleeps, then erupts when the window opens.",stat:"Quiet · Wave",spread:0.56,resilience:1.2,conceal:1.48,mutRate:0.88,unlock:false}
+];
+
+const REGIONS=[
+  {id:"na_west",name:"W. North America",pop:60,climate:"temp",science:90,open:75,links:["na_east","c_amer"]},
+  {id:"na_east",name:"E. North America",pop:120,climate:"temp",science:92,open:80,links:["na_west","eu_west","c_amer"]},
+  {id:"c_amer",name:"Central America",pop:50,climate:"hot",science:55,open:60,links:["na_west","na_east","s_amer"]},
+  {id:"s_amer",name:"South America",pop:110,climate:"hot",science:58,open:55,links:["c_amer","w_africa"]},
+  {id:"eu_west",name:"Western Europe",pop:100,climate:"temp",science:95,open:85,links:["na_east","eu_east","n_africa"]},
+  {id:"eu_east",name:"Eastern Europe",pop:80,climate:"cold",science:78,open:65,links:["eu_west","c_asia","mideast"]},
+  {id:"n_africa",name:"North Africa",pop:70,climate:"hot",science:50,open:50,links:["eu_west","w_africa","mideast"]},
+  {id:"w_africa",name:"West Africa",pop:90,climate:"hot",science:42,open:45,links:["n_africa","s_amer","e_africa"]},
+  {id:"e_africa",name:"East Africa",pop:85,climate:"hot",science:40,open:48,links:["w_africa","mideast","s_asia"]},
+  {id:"mideast",name:"Middle East",pop:95,climate:"hot",science:62,open:55,links:["eu_east","n_africa","e_africa","c_asia","s_asia"]},
+  {id:"c_asia",name:"Central Asia",pop:55,climate:"cold",science:55,open:40,links:["eu_east","mideast","e_asia","s_asia"]},
+  {id:"s_asia",name:"South Asia",pop:160,climate:"hot",science:58,open:50,links:["mideast","e_africa","c_asia","se_asia"]},
+  {id:"se_asia",name:"Southeast Asia",pop:120,climate:"hot",science:60,open:70,links:["s_asia","e_asia","oceania"]},
+  {id:"e_asia",name:"East Asia",pop:170,climate:"temp",science:88,open:55,links:["c_asia","se_asia","oceania"]},
+  {id:"oceania",name:"Oceania",pop:40,climate:"temp",science:80,open:70,links:["se_asia","e_asia"]}
+];
+
+const MUT_OPTIONS=[
+  {id:"trans",name:"Bias Transmission",cost:3,desc:"Spread faster between hosts",branch:"spread",trade:"Louder over time"},
+  {id:"res",name:"Bias Resilience",cost:3,desc:"Endure seals and climate",branch:"resilience",trade:"Slightly slower spread"},
+  {id:"hide",name:"Bias Concealment",cost:3,desc:"Harder to detect",branch:"conceal",trade:"Weaker surges"},
+  {id:"stabilize",name:"Stabilize Form",cost:4,desc:"Reduce wild drift",branch:"stable",trade:"Spend now, safer later"},
+  {id:"surge",name:"Force Surge",cost:5,desc:"Spike presence everywhere you are",branch:"surge",trade:"+Detection, −Stability"},
+  {id:"seed",name:"Seed Reservoir",cost:4,desc:"Foothold in a weak region",branch:"seed",trade:"May draw local eyes"}
+];
+
+let state=null,selectedNature=null,selectedScenario=null,selectedRegion=null;
+let tipStep=0, soundOn=false, audioCtx=null;
+
+function $(id){return document.getElementById(id)}
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$(id).classList.add("active")}
+function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function rnd(){return Math.random()}
+function pick(arr){return arr[Math.floor(rnd()*arr.length)]}
+
+function unlockedSet(){
+  try{return new Set(JSON.parse(localStorage.getItem("veil_unlocks")||'["spore","vector"]'))}catch(e){return new Set(["spore","vector"])}
+}
+function unlockAllNatures(){
+  try{localStorage.setItem("veil_unlocks",JSON.stringify(["spore","vector","viral","dormant"]))}catch(e){}
+}
+function isUnlocked(id){return unlockedSet().has(id) || NATURES.find(n=>n.id===id)?.unlock}
+
+function loadBest(){try{return JSON.parse(localStorage.getItem("veil_best")||"null")}catch(e){return null}}
+function saveBest(entry){
+  const prev=loadBest();
+  if(!prev||entry.score>prev.score){try{localStorage.setItem("veil_best",JSON.stringify(entry))}catch(e){}return true}
+  return false;
+}
+function showTitleBest(){
+  const b=loadBest(), el=$("title-best");
+  if(!el) return;
+  el.innerHTML=b?("Best score: <strong>"+b.score+"</strong> · "+b.nature+" / "+b.scenario):"Best score: <strong>—</strong>";
+  const u=unlockedSet();
+  const note=$("unlock-note");
+  if(note) note.innerHTML=u.size>=4?"All natures unlocked.":"Win once to unlock <strong>Viral</strong> & <strong>Dormant</strong>.";
+}
+
+function calcScore(){
+  if(!state) return 0;
+  const pres=totalPresence();
+  let s=Math.round(pres*12+infectedCount()*9+state.turn*2);
+  s+=Math.round(state.traits.spread*14+state.traits.resilience*14+state.traits.conceal*12);
+  if(state.won) s+=220;
+  if(state.scenario.id==="iron") s=Math.round(s*1.3);
+  if(state.scenario.id==="ghost"&&state.globalDetect<38) s=Math.round(s*1.25);
+  if(state.cure>75&&state.won) s+=60;
+  return Math.max(0,s);
+}
+
+function beep(freq, dur, type){
+  if(!soundOn) return;
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||"sine"; o.frequency.value=freq;
+    g.gain.value=0.04;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+(dur||0.08));
+    o.stop(audioCtx.currentTime+(dur||0.08)+0.02);
+  }catch(e){}
+}
+
+function toast(msg){
+  const t=document.createElement("div"); t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1900);
+}
+function flash(kind){
+  document.body.classList.remove("flash-bad","flash-good");
+  void document.body.offsetWidth;
+  document.body.classList.add(kind==="bad"?"flash-bad":"flash-good");
+  setTimeout(()=>document.body.classList.remove("flash-bad","flash-good"),500);
+}
+
+function log(msg,cls){
+  const el=$("log");
+  const d=document.createElement("div");
+  if(cls) d.className=cls;
+  d.textContent=msg;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>32) el.removeChild(el.lastChild);
+}
+
+function permanenceProgress(){
+  const pres=totalPresence(), crit=criticalPresence(), regions=infectedCount();
+  return clamp(pres/40*45 + crit/24*40 + regions/10*15, 0, 100);
+}
+
+function worldPressure(){
+  // 0-1 how hard the world is pushing back
+  return clamp((state.globalDetect/100)*0.55 + (state.cure/100)*0.45, 0, 1);
+}
+
+function initScenarioSelect(){
+  const list=$("scenario-list"); list.innerHTML="";
+  SCENARIOS.forEach(s=>{
+    const card=document.createElement("div");
+    card.className="scenario-card"+(selectedScenario===s.id?" selected":"");
+    card.innerHTML=`<h3>${s.name}</h3><p>${s.blurb}</p><div class="stat">${s.stat}</div>`;
+    card.onclick=()=>{selectedScenario=s.id;$("btn-to-nature").disabled=false;initScenarioSelect()};
+    list.appendChild(card);
+  });
+}
+function initNatureSelect(){
+  const list=$("nature-list"); list.innerHTML="";
+  NATURES.forEach(n=>{
+    const locked=!isUnlocked(n.id);
+    const card=document.createElement("div");
+    card.className="nature-card"+(selectedNature===n.id?" selected":"")+(locked?" locked":"");
+    card.innerHTML=`<h3>${n.name}${locked?" 🔒":""}</h3><p>${locked?"Win a run to unlock.":n.blurb}</p><div class="stat">${n.stat}</div>`;
+    if(!locked) card.onclick=()=>{selectedNature=n.id;$("btn-confirm-nature").disabled=false;initNatureSelect()};
+    list.appendChild(card);
+  });
+}
+
+function regionName(id){const r=state.regions.find(x=>x.id===id);return r?r.name:id}
+function totalPresence(){let w=0,t=0;state.regions.forEach(r=>{w+=r.inf*r.pop;t+=r.pop});return t?w/t:0}
+function criticalPresence(){
+  let score=0;
+  state.regions.forEach(r=>{score+=(r.inf/100)*((r.science/100)*0.5+(r.open/100)*0.3+0.2)});
+  return score/state.regions.length*100;
+}
+function infectedCount(){return state.regions.filter(r=>r.inf>1).length}
+function lvl(inf){if(inf<=0.5)return 0;if(inf<8)return 1;if(inf<22)return 2;if(inf<45)return 3;return 4}
+
+function setTip(){
+  const tip=$("tip");
+  if(!tip) return;
+  if(tipStep===0){ tip.style.display="block"; tip.textContent="1/3 — Spend Influence on a bias (Transmission, Resilience, or Concealment)."; }
+  else if(tipStep===1){ tip.style.display="block"; tip.textContent="2/3 — Advance Cycle to spread. Watch the two bars at the top."; }
+  else if(tipStep===2){ tip.style.display="block"; tip.textContent="3/3 — If Detection rises, invest in Concealment or Resilience — or Surge before they finish."; }
+  else tip.style.display="none";
+}
+
+function newGame(){
+  const nature=NATURES.find(n=>n.id===selectedNature)||NATURES[0];
+  const scenario=SCENARIOS.find(s=>s.id===selectedScenario)||SCENARIOS[0];
+  const startId=pick(REGIONS).id;
+  const base=(11+rnd()*7)*scenario.startInf;
+  state={
+    turn:1,nature,scenario,influence:7,globalDetect:0,cure:0,
+    traits:{spread:nature.spread,resilience:nature.resilience,conceal:nature.conceal},
+    stability:0.74,phase:"Emergence",
+    regions:REGIONS.map(r=>({...r,inf:r.id===startId?base:0,det:0,sealed:0})),
+    origin:startId,dead:false,won:false,mutCount:0
+  };
+  selectedRegion=startId; tipStep=0; setTip();
+  $("nature-label").textContent=nature.name;
+  $("scenario-label").textContent=scenario.name;
+  $("log").innerHTML="";
+  log("Scenario: "+scenario.name+".","sys");
+  log("Pattern active in "+regionName(startId)+".","sys");
+  log("You steer. You do not command.","sys");
+  $("delta").textContent="Advance to see what changes.";
+  beep(220,0.06); renderAll(); show("screen-game");
+}
+
+function renderAll(){
+  const pres=totalPresence(), perm=permanenceProgress(), press=worldPressure();
+  $("s-infect").textContent=Math.round(pres)+"%";
+  $("s-detect").textContent=Math.round(state.globalDetect)+"%";
+  $("s-cure").textContent=Math.round(state.cure)+"%";
+  $("s-inf").textContent=Math.floor(state.influence);
+  $("s-stable").textContent=Math.round(state.stability*100)+"%";
+  $("turn-num").textContent=state.turn;
+  $("phase-label").textContent=state.phase;
+  $("phase-blurb").textContent=PHASE_TEXT[state.phase]||state.phase;
+  $("race-you").style.width=perm.toFixed(1)+"%";
+  $("race-you-pct").textContent=Math.round(perm)+"%";
+  $("race-them").style.width=clamp(state.cure,0,100).toFixed(1)+"%";
+  $("race-them-pct").textContent=Math.round(state.cure)+"%";
+  $("traits").innerHTML=`
+    <div class="trait">Transmission<b>${state.traits.spread.toFixed(2)}</b></div>
+    <div class="trait">Resilience<b>${state.traits.resilience.toFixed(2)}</b></div>
+    <div class="trait">Concealment<b>${state.traits.conceal.toFixed(2)}</b></div>`;
+  const pr=$("pressure");
+  if(pr){
+    const label=press<0.2?"Calm":press<0.45?"Aware":press<0.7?"Mobilized":"All-out response";
+    pr.innerHTML=`World pressure: <b>${label}</b> (${Math.round(press*100)}%) — research and seals scale with this.`;
+  }
+
+  const map=$("map"); map.innerHTML="";
+  state.regions.forEach(r=>{
+    const div=document.createElement("div");
+    div.className="region lvl"+lvl(r.inf)
+      +(r.id===selectedRegion?" selected":"")
+      +(r.id===state.origin?" origin":"")
+      +(r.sealed>40?" sealed-hard":"");
+    div.innerHTML=`<div class="rname">${r.name}</div><div>
+      <div class="rpct">${r.inf<0.5?"—":r.inf.toFixed(0)+"%"}</div>
+      <div class="rdet">${r.det>2?"det "+r.det.toFixed(0)+"%":""}</div></div>`;
+    div.onclick=()=>{selectedRegion=r.id;renderAll()};
+    map.appendChild(div);
+  });
+
+  const sel=state.regions.find(r=>r.id===selectedRegion);
+  if(sel){
+    $("region-text").innerHTML=`<strong style="color:var(--text)">${sel.name}</strong><br>
+      Presence <strong style="color:var(--infect)">${sel.inf.toFixed(1)}%</strong>
+      · Detection <strong style="color:var(--detect)">${sel.det.toFixed(1)}%</strong><br>
+      Science ${sel.science} · Openness ${sel.open} · ${sel.climate}<br>
+      Routes: ${sel.links.map(regionName).join(", ")}<br>
+      ${sel.sealed>0?`<span style="color:var(--warn)">Sealed ${sel.sealed.toFixed(0)}</span>`:"Open corridors"}`;
+  }
+
+  const mut=$("mut-actions"); mut.innerHTML="";
+  MUT_OPTIONS.forEach(m=>{
+    const b=document.createElement("button");
+    b.className="mut-btn"; b.disabled=state.influence<m.cost;
+    b.innerHTML=`<strong>${m.name}</strong><span>${m.desc}<br><span class="cost">${m.cost} inf</span> · ${m.trade}</span>`;
+    b.onclick=()=>applyMut(m);
+    mut.appendChild(b);
+  });
+}
+
+function applyMut(m){
+  if(!state||state.influence<m.cost) return;
+  state.influence-=m.cost; state.mutCount++;
+  if(tipStep===0){ tipStep=1; setTip(); }
+
+  if(m.branch==="spread"){
+    state.traits.spread+=0.15+rnd()*0.09;
+    state.traits.conceal=clamp(state.traits.conceal-0.03,0.35,2.8);
+    log("Transmission bias — movement up, slightly louder.","good"); toast("Transmission ↑"); beep(440,0.05);
+  } else if(m.branch==="resilience"){
+    state.traits.resilience+=0.15+rnd()*0.09;
+    state.traits.spread=clamp(state.traits.spread-0.03,0.35,2.8);
+    log("Resilience bias — harder to purge, a bit slower.","good"); toast("Resilience ↑"); beep(392,0.05);
+  } else if(m.branch==="conceal"){
+    state.traits.conceal+=0.15+rnd()*0.09;
+    log("Concealment bias — quieter expression.","good"); toast("Concealment ↑"); beep(523,0.05);
+  } else if(m.branch==="stable"){
+    state.stability=clamp(state.stability+0.22,0.2,1);
+    log("Stabilized. Drift suppressed.","sys"); toast("Stability ↑"); beep(330,0.06);
+  } else if(m.branch==="surge"){
+    state.regions.forEach(r=>{ if(r.inf>1) r.inf=clamp(r.inf+6+rnd()*8,0,100); });
+    state.globalDetect=clamp(state.globalDetect+8+rnd()*9,0,100);
+    state.stability=clamp(state.stability-0.18,0.12,1);
+    log("Surge forced. Presence and attention spike.","warn"); toast("Surge"); beep(200,0.1,"square"); flash("good");
+  } else if(m.branch==="seed"){
+    const weak=state.regions.filter(r=>r.inf<12).sort((a,b)=>a.inf-b.inf);
+    const target=weak[0]||pick(state.regions);
+    target.inf=clamp(target.inf+7+rnd()*5,0,100);
+    if(rnd()<0.35) target.det=clamp(target.det+8,0,100);
+    log("Reservoir seeded in "+target.name+".","good"); toast("Seeded "+target.name); beep(494,0.05);
+  }
+
+  if(rnd()>state.stability){
+    const drift=pick(["spread","resilience","conceal"]);
+    state.traits[drift]=clamp(state.traits[drift]+(rnd()-0.38)*0.14,0.35,2.8);
+    log("Uncontrolled drift — "+drift+".","warn"); beep(160,0.08,"triangle");
+  }
+  renderAll();
+}
+
+function advanceCycle(){
+  if(!state||state.dead||state.won) return;
+  if(tipStep===1){ tipStep=2; setTip(); }
+  else if(tipStep===2&&state.turn>=3){ tipStep=3; setTip(); }
+
+  const n=state.nature, sc=state.scenario, press=worldPressure();
+  const prevPres=totalPresence(), prevDet=state.globalDetect, prevCure=state.cure, prevInf=infectedCount();
+  const grew=[];
+
+  // Tension: higher world pressure → stronger seals & research, slightly harsher on loud forms
+  const loudPenalty=clamp((state.traits.spread-0.8)*0.08,0,0.2);
+
+  state.regions.forEach(r=>{
+    if(r.inf<=0) return;
+    const climateMod=(r.climate==="hot"&&n.id==="spore")?1.14:(r.climate==="cold"&&n.id==="viral")?0.82:1;
+    const localGrowth=r.inf*0.09*n.spread*state.traits.spread*sc.spreadMult*(r.open/100)*climateMod*(0.78+rnd()*0.5);
+    const resist=(r.sealed/100)*(0.5+press*0.35);
+    r.inf=clamp(r.inf+localGrowth*(1-resist)*(0.52+state.traits.resilience*0.36),0,100);
+    r.links.forEach(lid=>{
+      const other=state.regions.find(x=>x.id===lid); if(!other) return;
+      const jump=(r.inf/100)*(other.open/100)*2.4*n.spread*state.traits.spread*sc.spreadMult*rnd();
+      if(jump>0.28&&other.inf<95){
+        const ob=other.inf; other.inf=clamp(other.inf+jump,0,100);
+        if(ob<1&&other.inf>=1) grew.push(other.name);
+      }
+    });
+  });
+
+  if(n.id==="vector"&&rnd()<0.3){
+    const infected=state.regions.filter(r=>r.inf>5), targets=state.regions.filter(r=>r.inf<5);
+    if(infected.length&&targets.length){
+      const t=pick(targets); t.inf=clamp(t.inf+5+rnd()*6,0,100);
+      log("Vector jump → "+t.name+".","good"); grew.push(t.name); beep(600,0.04);
+    }
+  }
+  if(n.id==="dormant"&&state.turn>5&&state.turn%4===0){
+    state.regions.forEach(r=>{ if(r.inf>2) r.inf=clamp(r.inf+7+rnd()*10,0,100); });
+    log("Dormant wave.","warn"); flash("good"); beep(180,0.12,"square");
+  }
+
+  let detectGain=0;
+  state.regions.forEach(r=>{
+    if(r.inf<=0) return;
+    const visibility=(r.inf/100)*(1.22-state.traits.conceal*0.32+loudPenalty)*(r.science/100);
+    r.det=clamp(r.det+visibility*9.5*sc.detectMult*(0.55+rnd()),0,100);
+    detectGain+=r.det*(r.science/100)*0.024;
+  });
+  state.globalDetect=clamp(state.globalDetect+detectGain*sc.detectMult*(0.9+rnd()*0.4)*(1+press*0.15),0,100);
+
+  if(state.globalDetect>8){
+    state.regions.forEach(r=>{
+      if(r.det>15) r.sealed=clamp(r.sealed+(r.science/100)*5.5*(state.globalDetect/100)*(0.7+press*0.5),0,94);
+    });
+  }
+  if(state.globalDetect>12){
+    const research=state.regions.reduce((s,r)=>s+(r.science/100)*(r.det/100)*0.45,0);
+    const cureGain=research*sc.cureMult*(0.65+rnd()*0.4)*(1+press*0.35)*(1-state.traits.resilience*0.15);
+    state.cure=clamp(state.cure+cureGain,0,100);
+  }
+
+  const pres=totalPresence();
+  state.influence+=2.5+pres/18+(state.globalDetect>25?1.3:0)+infectedCount()*0.12;
+
+  // Events scale with pressure
+  if(rnd()<0.2+press*0.15){
+    pick([
+      ()=>{state.globalDetect=clamp(state.globalDetect+7,0,100);log("International bulletin.","bad");beep(140,0.1,"sawtooth");flash("bad")},
+      ()=>{state.cure=clamp(state.cure+5,0,100);log("Research accelerated.","bad");beep(150,0.08,"sawtooth")},
+      ()=>{const pool=state.regions.filter(x=>x.inf>1);const r=pick(pool.length?pool:state.regions);r.inf=clamp(r.inf+8,0,100);log("Cluster — "+r.name+".","good");grew.push(r.name)},
+      ()=>{state.stability=clamp(state.stability-0.11,0.12,1);log("Stability slips.","warn")},
+      ()=>{state.regions.forEach(r=>{if(r.sealed>8)r.sealed=clamp(r.sealed-8,0,90)});log("Containment fatigue.","good")},
+      ()=>{const q=state.regions.filter(r=>r.inf>3&&r.det<20);if(q.length){const r=pick(q);r.det=clamp(r.det+16,0,100);log("Clinician flag — "+r.name+".","bad")}else log("Noise only.","sys")},
+      ()=>{state.traits.conceal=clamp(state.traits.conceal+0.08,0.35,2.8);log("Expression softens.","good")}
+    ])();
+  }
+
+  if(rnd()>state.stability*(2.1-n.mutRate)){
+    const k=pick(["spread","resilience","conceal"]);
+    state.traits[k]=clamp(state.traits[k]+(rnd()-0.4)*0.14,0.35,2.8);
+    log("Background mutation — "+k+".","sys");
+  }
+  if(state.globalDetect>35) state.stability=clamp(state.stability-0.02-press*0.01,0.12,1);
+
+  if(state.globalDetect<11) state.phase="Emergence";
+  else if(state.globalDetect<36) state.phase="Recognition";
+  else if(state.cure<50) state.phase="Negotiation";
+  else state.phase="Inheritance";
+
+  state.turn++;
+
+  const dPres=pres-prevPres, dDet=state.globalDetect-prevDet, dCure=state.cure-prevCure, dReg=infectedCount()-prevInf;
+  const bits=[];
+  bits.push(`Presence <span class="${dPres>=0?"up":"down"}">${dPres>=0?"+":""}${dPres.toFixed(1)}%</span>`);
+  bits.push(`Detect <span class="${dDet>0.4?"down":""}">${dDet>=0?"+":""}${dDet.toFixed(1)}</span>`);
+  bits.push(`Counter <span class="${dCure>0.3?"down":""}">${dCure>=0?"+":""}${dCure.toFixed(1)}</span>`);
+  if(dReg>0) bits.push(`<strong>+${dReg} region${dReg>1?"s":""}</strong>`);
+  if(grew.length) bits.push(grew.filter((v,i,a)=>a.indexOf(v)===i).slice(0,3).join(", "));
+  $("delta").innerHTML=bits.join(" · ");
+  beep(280,0.03);
+
+  const crit=criticalPresence(), fireNeed=sc.id==="fire"?68:74;
+  if(state.cure>=100&&pres<50){ endGame(false,"Countermeasures finished while you were still containable. Erased."); return; }
+  if(pres<0.3&&state.turn>5){ endGame(false,"Presence collapsed. No reservoirs left."); return; }
+  if(crit>=23&&pres>=36&&state.turn>=9&&(sc.id!=="ghost"||state.globalDetect<60)){
+    endGame(true,"Embedded deep enough. Removing you costs more than coexistence. Permanence."); return;
+  }
+  if(pres>=fireNeed&&state.globalDetect>=42){ endGame(true,"Global presence undeniable. Institutions crack. You remain."); return; }
+  if(sc.id==="ghost"&&pres>=34&&state.globalDetect<33&&state.turn>=11){
+    endGame(true,"Quiet inheritance. They live with you and never fully map you."); return;
+  }
+  if(state.turn>46){
+    if(pres>=28) endGame(true,"Time beat coordination. You are a permanent fact.");
+    else endGame(false,"Long campaign drained every reservoir.");
+    return;
+  }
+
+  log("— Cycle "+state.turn+" —","sys");
+  renderAll();
+  if(grew.length){
+    requestAnimationFrame(()=>{
+      document.querySelectorAll(".region").forEach(node=>{
+        const name=node.querySelector(".rname")?.textContent;
+        if(name&&grew.includes(name)){ node.classList.add("pulse"); setTimeout(()=>node.classList.remove("pulse"),380); }
+      });
+    });
+  }
+}
+
+function endGame(win,text){
+  state.won=win; state.dead=!win;
+  if(win){ unlockAllNatures(); flash("good"); beep(523,0.15); setTimeout(()=>beep(659,0.15),120); }
+  else { flash("bad"); beep(110,0.2,"sawtooth"); }
+  const score=calcScore();
+  const entry={score,nature:state.nature.name,scenario:state.scenario.name,presence:Math.round(totalPresence()),turn:state.turn,win};
+  const isBest=saveBest(entry);
+  $("end-box").className="end-box "+(win?"win":"lose");
+  $("end-title").textContent=win?"Permanence":"Erasure";
+  $("end-desc").textContent=text;
+  $("end-stats").textContent=`Cycles ${state.turn} · Presence ${Math.round(totalPresence())}% · Detection ${Math.round(state.globalDetect)}% · Counter ${Math.round(state.cure)}% · ${infectedCount()}/15 regions · ${state.nature.name} / ${state.scenario.name}`;
+  $("end-score").innerHTML="Score: <strong>"+score+"</strong>"+(isBest?" · New best":"")+(win?" · Natures unlocked":"");
+  showTitleBest(); show("screen-end");
+}
+
+$("btn-start").onclick=()=>{selectedScenario=null;selectedNature=null;$("btn-to-nature").disabled=true;$("btn-confirm-nature").disabled=true;initScenarioSelect();show("screen-scenario")};
+$("btn-to-nature").onclick=()=>{initNatureSelect();show("screen-nature")};
+$("btn-confirm-nature").onclick=()=>newGame();
+$("btn-back-title").onclick=()=>show("screen-title");
+$("btn-back-scenario").onclick=()=>show("screen-scenario");
+$("btn-advance").onclick=()=>advanceCycle();
+$("btn-again").onclick=()=>{showTitleBest();show("screen-title")};
+$("btn-how").onclick=$("btn-how2").onclick=()=>$("modal-how").classList.remove("hidden");
+$("btn-about").onclick=()=>$("modal-about").classList.remove("hidden");
+$("close-how").onclick=()=>$("modal-how").classList.add("hidden");
+$("close-about").onclick=()=>$("modal-about").classList.add("hidden");
+$("btn-sound").onclick=()=>{
+  soundOn=!soundOn;
+  $("btn-sound").textContent=soundOn?"Sound: On":"Sound: Off";
+  $("btn-sound").classList.toggle("on",soundOn);
+  if(soundOn) beep(440,0.06);
+};
+document.addEventListener("keydown",e=>{
+  if((e.code==="Space"||e.key==="Enter")&&$("screen-game").classList.contains("active")&&state&&!state.dead&&!state.won){
+    e.preventDefault(); advanceCycle();
+  }
+});
+showTitleBest();
+})();
+</script>
+</body>
+</html>
