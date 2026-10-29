@@ -1,5 +1,6 @@
 import re,sys
 CURE_K,PURGE_K,CURE_PURGE,PP,PC,PT,JK,EVT_P,AIRK,PORTK=sys.argv[1:11]
+SITE=sys.argv[11] if len(sys.argv)>11 else ''
 s=open('veil_original.html').read()
 def R(old,new,count=1):
     global s
@@ -599,6 +600,35 @@ R('<div class="modal-bg hidden" id="modal-choice">','<div id="toasts" aria-live=
 R('document.body.appendChild(t); setTimeout(()=>t.remove(),1900);','const box=document.getElementById("toasts")||document.body; Array.from(box.querySelectorAll(".toast")).forEach(c=>{ if(c.textContent===msg) c.remove(); }); const all=box.querySelectorAll(".toast"); for(let i=0;i<all.length-2;i++) all[i].remove(); box.appendChild(t); setTimeout(()=>t.remove(),2200);')
 R('if(typeof refreshLocks==="function")refreshLocks()}','if(typeof refreshLocks==="function")refreshLocks(); if(typeof heroStart==="function")heroStart(); if(typeof cardSubs==="function")cardSubs()}')
 R('</style>',ICONCSS+THEMECSS+'</style>')
+
+import html as _html, urllib.parse as _up
+SITE_N=(SITE.rstrip('/')+'/') if SITE else ''
+_TITLE='VEIL — Steer the Contagion'
+_DESC='Steer a spreading pathogen across 41 world regions, outwit the cure, and become permanent. 8 pathogens, a 10-chapter campaign and a daily challenge. Play in your browser.'
+_ALT='VEIL: a glowing dot-matrix world map with an outbreak spreading across it, and the tagline "Steer the contagion."'
+_E=lambda x:_html.escape(x,quote=True)
+_FAV='data:image/svg+xml,'+_up.quote('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#04060a"/><circle cx="24" cy="24" r="16" fill="none" stroke="#5df2b1" stroke-width="2.6"/><path d="M11 21c8 5.5 18 5.5 26 0M11 28c8 5.5 18 5.5 26 0" fill="none" stroke="#5df2b1" stroke-width="2.6" opacity=".55"/><circle cx="24" cy="24" r="3.4" fill="#5df2b1"/></svg>',safe='')
+_META='''<title>%s</title>
+<meta name="description" content="%s"/>
+<meta name="theme-color" content="#04060a"/>
+<meta name="color-scheme" content="dark"/>
+<link rel="icon" href="%s"/>
+<link rel="apple-touch-icon" href="%sapple-touch-icon.png"/>
+<meta property="og:type" content="website"/>
+<meta property="og:site_name" content="VEIL"/>
+<meta property="og:title" content="%s"/>
+<meta property="og:description" content="%s"/>
+<meta property="og:image" content="%sshare.png"/>
+<meta property="og:image:type" content="image/png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="%s"/>
+%s<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="%s"/>
+<meta name="twitter:description" content="%s"/>
+<meta name="twitter:image" content="%sshare.png"/>
+<meta name="twitter:image:alt" content="%s"/>'''%(_E(_TITLE),_E(_DESC),_FAV,SITE_N,_E(_TITLE),_E(_DESC),SITE_N,_E(_ALT),('<meta property="og:url" content="%s"/>\n<link rel="canonical" href="%s"/>\n'%(_E(SITE_N),_E(SITE_N)) if SITE_N else ''),_E(_TITLE),_E(_DESC),SITE_N,_E(_ALT))
+R('<title>VEIL — Steer the Contagion</title>\n<meta name="description" content="VEIL: steer an unstable contagion. Become permanent before the world erases you."/>',_META)
 
 # ---- keyboard ----
 i=s.index('document.addEventListener("keydown"'); j=s.index('showTitleBest();\n})();')

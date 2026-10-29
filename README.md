@@ -43,6 +43,14 @@ Open `veil.html` in any modern browser. It is one self-contained file with no de
   10. The Last Veil (Iron/Synthetic, the finale)
   Later chapters let you carry more adaptations forward.
 
+## Link previews (the picture and words that show when you share the link)
+These are called Open Graph and Twitter Card tags. `veil.html` already contains them: the title "VEIL — Steer the Contagion", a short description, a theme colour, a favicon, and a 1200x630 preview picture (`share.png`).
+- They only work when the game is hosted at your own web address, because chat and social apps must be able to download `share.png` from a full URL. (A link to the claude.ai artifact shows whatever claude.ai chooses; these tags cannot change that.)
+- Steps: 1) Put `veil.html` (you may rename it `index.html`), `share.png` and `apple-touch-icon.png` in the same folder on a host such as Netlify (drag and drop the folder), GitHub Pages or Cloudflare Pages. 2) Rebuild once with your real address as the last argument so the tags point at it:
+      python3 build.py 7.2 3.3 1.8 58 37 16 1.35 0.4 0.2 0.1 https://your-address.example/veil/
+  3) Upload the rebuilt `veil.html`. 4) To check it, paste the link into a chat app or use Facebook's Sharing Debugger or LinkedIn's Post Inspector. Apps cache previews, so use those tools to refresh a stale one.
+- To change the picture, edit `share_card.html` (the artwork, rendered at 1200x630) and take a screenshot, or simply replace `share.png` with any 1200x630 PNG. To change the words, edit the title and description near the end of `build.py` (search for _TITLE and _DESC) and rebuild.
+
 ## Design system
 - A single theme layer (`theme.css`) defines the look: dark "surveillance console" surfaces with glass panels, a refined type stack (Inter or the system UI font, with monospaced tabular numbers for data), a consistent icon set drawn as inline vector masks, and colour tokens for every stat (presence, detection, counter, influence, stability).
 - HUD: each stat has an icon, a large live value and a sparkline of its history. The race bars show quarter ticks.
@@ -99,6 +107,7 @@ Marathon and campaign multipliers are in `systems2.js` and `build.py` (search fo
 - `audio.js`: music, sound effects, settings and the colorblind palette
 - `layout.js`: the pinned-map cockpit layout, mobile tabs and fixed Advance bar
 - `theme.css`, `theme.js`: the design system, animated title map and HUD sparklines
+- `share.png`, `apple-touch-icon.png`, `share_card.html`: the link-preview picture, the home-screen icon, and the artwork source
 - `daily.js`: seeded random numbers, the Daily Challenge and result sharing
 - `det.js`: proves the daily seed is deterministic (same seed, same outcome)
 - `systems4.js`: choose-your-starting-region step
